@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>RubberDucky Intrusion Detector</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-50 p-6 font-sans">
+
+<header class="mb-6 flex items-center justify-between">
+  <h1 class="text-2xl font-bold">RubberDucky Intrusion Detector</h1>
+  <div class="text-sm text-slate-600">
+    Status: <span class="font-medium">Monitoring (Windows + Linux)</span>
+  </div>
+</header>
+
+<main class="grid grid-cols-3 gap-6">
+  <aside class="col-span-1">
+    <div class="bg-white p-4 rounded-2xl shadow-sm mb-4">
+      <h2 class="text-lg font-semibold mb-2">Filters</h2>
+      <div class="flex gap-2 mb-3">
+        <button data-filter="all" class="filter-btn px-3 py-1 rounded bg-slate-800 text-white">All</button>
+        <button data-filter="whitelisted" class="filter-btn px-3 py-1 rounded bg-slate-100">Whitelisted</button>
+        <button data-filter="unknown" class="filter-btn px-3 py-1 rounded bg-slate-100">Unknown</button>
+        <button data-filter="blocked" class="filter-btn px-3 py-1 rounded bg-slate-100">Blocked</button>
+      </div>
+      <input id="searchBox" placeholder="Search by name / VID / PID / serial" class="w-full border rounded px-3 py-2 text-sm" />
+    </div>
+
+    <div class="bg-white p-4 rounded-2xl shadow-sm">
+      <h2 class="text-lg font-semibold mb-2">Notifications</h2>
+      <div id="notifications" class="space-y-2">
+        <div class="text-sm text-slate-500">No notifications</div>
+      </div>
+    </div>
+  </aside>
+
+  <section class="col-span-2">
+    <div class="bg-white p-4 rounded-2xl shadow-sm mb-4 flex items-center justify-between">
+      <h2 class="text-lg font-semibold">Devices</h2>
+      <div class="text-sm text-slate-500">
+        Total: <span id="deviceCount" class="font-medium">0</span>
+      </div>
+    </div>
+    <div id="deviceList" class="grid grid-cols-1 gap-3"></div>
+  </section>
+</main>
+
+<div class="fixed bottom-6 right-6 w-72">
+  <div class="bg-white p-3 rounded-xl shadow">
+    <div class="text-sm font-semibold mb-2">Legend</div>
+    <div class="flex justify-between text-xs text-slate-600">
+      <div>Whitelisted</div>
+      <div>Blocked</div>
+      <div>Unknown</div>
+    </div>
+    <div class="flex justify-between mt-2">
+      <div class="px-2 py-1 rounded bg-green-50 text-green-700 text-xs">Allowed</div>
+      <div class="px-2 py-1 rounded bg-red-50 text-red-700 text-xs">Blocked</div>
+      <div class="px-2 py-1 rounded bg-yellow-50 text-yellow-700 text-xs">Unknown</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentFilter = "all";
+let searchQuery = "";
+
+const deviceList = document.getElementById("deviceList");
+const deviceCount = document.getElementById("deviceCount");
+const notifications = document.getElementById("notifications");
+const searchBox = document.getElementById("searchBox");
+
+async function loadDevices() {
+  const res = await fetch("/devices");
+  const devices = await res.json();
+  renderDevices(devices);
+}
+
+function renderDevices(devices) {
+  deviceList.innerHTML = "";
+  let filtered = devices.filter(d => {
+    if (currentFilter !== "all" && d.device_type !== currentFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return [d.usb_vid, d.usb_pid, d.usb_serial].some(f => f.toLowerCase().includes(q));
+    }
+    return true;
+  });
+
+  deviceCount.textContent = filtered.length;
+
+  if (filtered.length === 0) {
+    deviceList.innerHTML = <div class="text-center py-8 text-slate-500">No devices match your filter/search.</div>;
+    return;
+  }
+
+  filtered.forEach(dev => {
+    const card = document.createElement("div");
+    card.className = "bg-white rounded-xl p-4 shadow flex items-center justify-between";
+    card.innerHTML = `
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-semibold">${dev.usb_vid}:${dev.usb_pid}</div>
+        <div>
+          <div class="text-sm font-semibold">USB Device</div>
+          <div class="text-xs text-slate-500">SN: ${dev.usb_serial}</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="px-2 py-1 rounded ${dev.device_type === 'whitelisted' ? 'bg-green-100 text-green-700' : dev.device_type === 'blocked' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'} text-sm">
+          ${dev.device_type}
+        </div>
+        <div class="flex gap-2">
+          <button onclick="updateDevice(${dev.id}, 'allow')" class="px-3 py-1 rounded bg-green-600 text-white text-sm">Allow</button>
+          <button onclick="updateDevice(${dev.id}, 'block')" class="px-3 py-1 rounded bg-red-600 text-white text-sm">Block</button>
+          <button onclick="updateDevice(${dev.id}, 'remove')" class="px-3 py-1 rounded bg-slate-200 text-sm">Remove</button>
+        </div>
+      </div>
+    `;
+    deviceList.appendChild(card);
+  });
+}
+
+async function updateDevice(id, action) {
+  await fetch(/device/${id}/action, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action })
+  });
+  loadDevices();
+}
+
+// Filters
+document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter-btn").forEach(b => b.className = "filter-btn px-3 py-1 rounded bg-slate-100");
+    btn.className = "filter-btn px-3 py-1 rounded bg-slate-800 text-white";
+    currentFilter = btn.getAttribute("data-filter");
+    loadDevices();
+  });
+});
+
+// Search
+searchBox.addEventListener("input", e => {
+  searchQuery = e.target.value;
+  loadDevices();
+});
+
+window.onload = loadDevices;
+</script>
+
+</body>
+</html>

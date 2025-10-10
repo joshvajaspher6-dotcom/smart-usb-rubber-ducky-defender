@@ -1,14 +1,16 @@
-# usb_monitor.py
 import time
 import sqlite3
 import threading
 import webbrowser
 import os
+import sys
 from usbmonitor import USBMonitor
 from usbmonitor.attributes import ID_MODEL_ID, ID_VENDOR_ID, ID_SERIAL
 import server
 
-DB_PATH = os.path.join(os.path.dirname(_file_), "usb_devices.db")
+
+DB_PATH = os.path.join(os.path.dirname(__file__), "usb_devices.db")
+
 
 # ---------------- SQLite Setup ----------------
 conn = sqlite3.connect(DB_PATH)
@@ -26,15 +28,18 @@ conn.commit()
 cur.close()
 conn.close()
 
+
 # ---------------- Helper Functions ----------------
 def normalize_serial(serial):
     return serial.split('&')[0] if serial else 'NoSerial'
+
 
 def print_device_info(vid, pid, serial):
     print(f"Device Detected:")
     print(f"  VID: {vid}")
     print(f"  PID: {pid}")
     print(f"  Serial Number: {serial}\n")
+
 
 def check_or_insert_device(vid, pid, serial):
     conn = sqlite3.connect(DB_PATH)
@@ -54,11 +59,13 @@ def check_or_insert_device(vid, pid, serial):
         print("New device inserted.\n")
     conn.close()
 
+
 # ---------------- USB Monitoring ----------------
 def usb_monitor_loop():
     print("USB monitoring started...")
     monitor = USBMonitor()
     seen_devices = set()  # Track unique devices in this session
+
 
     while True:
         removed, added = monitor.changes_from_last_check(update_last_check_devices=True)
@@ -67,9 +74,11 @@ def usb_monitor_loop():
             pid = device_info.get(ID_MODEL_ID, 'UnknownPID')
             serial = normalize_serial(device_info.get(ID_SERIAL, 'NoSerial'))
 
+
             # Skip non-hex VID/PID
             if not all(c in "0123456789abcdefABCDEF" for c in vid) or not all(c in "0123456789abcdefABCDEF" for c in pid):
                 continue
+
 
             device_key = (vid, pid, serial)
             if device_key not in seen_devices:
@@ -77,14 +86,21 @@ def usb_monitor_loop():
                 print_device_info(vid, pid, serial)
                 check_or_insert_device(vid, pid, serial)
 
+
         time.sleep(1)
+
 
 # ---------------- Start Dashboard ----------------
 def start_dashboard():
     threading.Thread(target=server.start_server, daemon=True).start()
     webbrowser.open("http://localhost:8000/")
 
+
 # ---------------- Main ----------------
-if _name_ == "_main_":
+if __name__ == "__main__":
     start_dashboard()
-    usb_monitor_loop()
+    try:
+        usb_monitor_loop()
+    except KeyboardInterrupt:
+        print("\nUSB monitoring stopped by user.")
+        sys.exit(0)

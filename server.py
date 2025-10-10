@@ -1,17 +1,17 @@
-# server.py
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(_file_), "usb_devices.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "usb_devices.db")
 
-app = Flask(_name_)
+app = Flask(__name__)
 CORS(app)
 
 @app.route("/")
 def index():
-    return send_from_directory(os.path.dirname(_file_), "index.html")
+    # Serve index.html from the same directory
+    return send_from_directory(os.path.dirname(__file__), "index.html")
 
 @app.route("/devices", methods=["GET"])
 def get_devices():

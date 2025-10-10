@@ -91,7 +91,7 @@ function renderDevices(devices) {
   deviceCount.textContent = filtered.length;
 
   if (filtered.length === 0) {
-    deviceList.innerHTML = <div class="text-center py-8 text-slate-500">No devices match your filter/search.</div>;
+    deviceList.innerHTML = '<div class="text-center py-8 text-slate-500">No devices match your filter/search.</div>';
     return;
   }
 
@@ -122,7 +122,7 @@ function renderDevices(devices) {
 }
 
 async function updateDevice(id, action) {
-  await fetch(/device/${id}/action, {
+  await fetch(`/device/${id}/action`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action })

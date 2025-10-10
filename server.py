@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import sqlite3
 import os
+import logging
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "usb_devices.db")
 
@@ -58,4 +59,10 @@ def update_device(device_id):
     return jsonify({"status": "success"})
 
 def start_server():
+    # Disable Flask and Werkzeug request logging
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.ERROR)  # Only show errors
+
+    app.logger.setLevel(logging.ERROR)  # Disable Flask app logs except errors
+
     app.run(port=8000)

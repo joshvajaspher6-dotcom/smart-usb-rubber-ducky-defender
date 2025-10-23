@@ -11,7 +11,7 @@ import server
 from ml import USBRubberDuckyDetector, capture_5_seconds
 from allow_block import block_device, allow_device, find_devcon
 
-DB_PATH = os.path.join(os.path.dirname(_file_), "usb_devices.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "usb_devices.db")
 
 # ---------------- SQLite Setup ----------------
 def initialize_database():
@@ -221,7 +221,7 @@ def start_dashboard():
     webbrowser.open("http://localhost:8000/")
 
 # ---------------- Main ----------------
-if _name_ == "_main_":
+if __name__ == "__main__":
     print(f"\n{'='*60}")
     print("🛡  USB Rubber Ducky Intrusion Detection System")
     print(f"{'='*60}\n")

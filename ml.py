@@ -11,7 +11,7 @@ from pynput import keyboard
 COMMAND_KEYWORDS = ["cmd","ls","&&","||","sudo","apt"]
 
 class USBRubberDuckyDetector:
-    def _init_(self, model_file='usb_ducky_detector.pkl'):
+    def __init__(self, model_file='usb_ducky_detector.pkl'):
         self.model_file = model_file
         self.model = None
         self.ducky_threshold_5sec = 100 * 5      # 500 keys/5 sec threshold
@@ -167,7 +167,7 @@ def capture_5_seconds():
     return keystrokes
 
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     detector = USBRubberDuckyDetector()
     if not detector.load_model():
         print("Training model for USB Rubber Ducky detection (first run only)...")

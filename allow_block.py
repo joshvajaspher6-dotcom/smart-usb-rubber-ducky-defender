@@ -15,7 +15,7 @@ def is_admin():
 
 def find_devcon():
     """Find devcon.exe in current directory or PATH"""
-    script_dir = os.path.dirname(_file_)
+    script_dir = os.path.dirname(__file__)
     local_path = os.path.join(script_dir, "devcon.exe")
     if os.path.isfile(local_path):
         return local_path
@@ -98,7 +98,7 @@ def usb_manager(target_vid, target_pid, action):
                     allow_device(target_vid, target_pid, devcon_path)
         time.sleep(3)
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     if not is_admin():
         print("❌ Please run as Administrator!")
         exit(1)

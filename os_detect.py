@@ -24,7 +24,7 @@ def main():
     if current_os == "Windows":
         run_script("usb_monitor.py")
     elif current_os == "Linux":
-        run_script("usb_linux.py")
+        run_script("usb_monitor.py")
     else:
         print("No matching script to run for this OS.")
 

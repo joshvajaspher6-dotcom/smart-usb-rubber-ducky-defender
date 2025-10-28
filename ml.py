@@ -8,7 +8,27 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from pynput import keyboard
 
-COMMAND_KEYWORDS = ["cmd","ls","&&","||","sudo","apt"]
+COMMAND_KEYWORDS = [
+    "cmd",            
+    "powershell",      
+    "net",            
+    "tasklist",        
+    "taskkill",        
+    "reg",             
+    "wmic",            
+    "schtasks",       
+    "sc",              
+    "at",              
+    "rundll32",        
+    "del",             
+    "copy",           
+    "echo",            
+    "attrib",          
+    "powershell.exe", 
+    "netsh",           
+    "certutil",        
+]
+
 
 class USBRubberDuckyDetector:
     def __init__(self, model_file='usb_ducky_detector.pkl'):

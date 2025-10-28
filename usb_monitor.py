@@ -1,20 +1,15 @@
+#usb_monitor.py
 import time
 import sqlite3
 import threading
+import webbrowser
 import os
 import sys
-import subprocess
-
-try:
-    import usb.core
-    import usb.util
-except ImportError:
-    print("PyUSB not installed. Run 'pip install pyusb'")
-    sys.exit(1)
-
-import server_linux
-from ml_linux import USBRubberDuckyDetector, capture_5_seconds
-from allow_block_linux import block_device_linux, allow_device_linux, check_usb_authorization_support
+from usbmonitor import USBMonitor
+from usbmonitor.attributes import ID_MODEL_ID, ID_VENDOR_ID, ID_SERIAL
+import server
+from ml import USBRubberDuckyDetector, capture_5_seconds
+from allow_block import block_device, allow_device, find_devcon
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "usb_devices.db")
 
@@ -47,19 +42,17 @@ if not ml_detector.load_model():
 else:
     print("✅ ML model loaded successfully.")
 
-# ---------------- USB Authorization Check ----------------
-usb_auth_supported = check_usb_authorization_support()
+# ---------------- DevCon Setup ----------------
+devcon_path = find_devcon()
+if not devcon_path:
+    print("⚠  Warning: devcon.exe not found. Physical blocking will not work.")
+    print("   Download Windows Driver Kit and place devcon.exe in project folder.")
+else:
+    print(f"✅ DevCon found at: {devcon_path}")
 
 # ---------------- Helper Functions ----------------
 def normalize_serial(serial):
-    """Normalize serial number"""
-    if not serial:
-        return "NoSerial"
-    try:
-        serial = "".join(c for c in serial if c.isprintable()).strip()
-        return serial if serial else "NoSerial"
-    except Exception:
-        return "NoSerial"
+    return serial.split('&')[0] if serial else 'NoSerial'
 
 def print_device_info(vid, pid, serial):
     print(f"\n{'='*60}")
@@ -171,11 +164,11 @@ def analyze_device_with_ml(vid, pid, serial):
         conn.close()
         
         # Physically block the device
-        if usb_auth_supported:
-            block_device_linux(vid, pid)
-            print("✅ Device physically blocked via USB authorization")
+        if devcon_path:
+            block_device(vid, pid, devcon_path)
+            print("✅ Device physically blocked via devcon")
         else:
-            print("⚠  Cannot physically block - USB authorization not supported")
+            print("⚠  Cannot physically block - devcon.exe not found")
     else:
         # Detected as human - keep as unknown (manual review)
         print(f"\n✅ Normal USB/Driver detected")
@@ -190,77 +183,48 @@ def analyze_device_with_ml(vid, pid, serial):
     
     print(f"{'='*60}\n")
 
-# ---------------- USB Monitoring Loop (Keep original Linux logic) ----------------
+# ---------------- USB Monitoring Loop ----------------
 def usb_monitor_loop():
     print(f"\n{'='*60}")
     print("🔄 USB Monitoring Active")
     print(f"{'='*60}\n")
     
+    monitor = USBMonitor()
     seen_devices = set()
     
-    # Get initially connected devices
-    devices = usb.core.find(find_all=True)
-    for dev in devices:
-        vid = f"{dev.idVendor:04X}"
-        pid = f"{dev.idProduct:04X}"
-        try:
-            serial = usb.util.get_string(dev, dev.iSerialNumber)
-        except Exception:
-            serial = None
-        serial = normalize_serial(serial)
-        seen_devices.add((vid, pid, serial))
-    
-    print(f"{len(seen_devices)} device(s) already connected. Waiting for new devices...\n")
-    
     while True:
-        devices = usb.core.find(find_all=True)
-        current_devices = set()
+        removed, added = monitor.changes_from_last_check(update_last_check_devices=True)
         
-        for dev in devices:
-            vid = f"{dev.idVendor:04X}"
-            pid = f"{dev.idProduct:04X}"
-            try:
-                serial = usb.util.get_string(dev, dev.iSerialNumber)
-            except Exception:
-                serial = None
-            serial = normalize_serial(serial)
+        for device_id, device_info in added.items():
+            vid = device_info.get(ID_VENDOR_ID, 'UnknownVID')
+            pid = device_info.get(ID_MODEL_ID, 'UnknownPID')
+            serial = normalize_serial(device_info.get(ID_SERIAL, 'NoSerial'))
+            
+            # Skip non-hex VID/PID
+            if not all(c in "0123456789abcdefABCDEF" for c in vid) or \
+               not all(c in "0123456789abcdefABCDEF" for c in pid):
+                continue
             
             device_key = (vid, pid, serial)
-            current_devices.add(device_key)
-            
-            # New device detected
             if device_key not in seen_devices:
                 seen_devices.add(device_key)
                 print_device_info(vid, pid, serial)
                 check_or_insert_device(vid, pid, serial)
         
-        # Optionally detect removed devices
-        removed = seen_devices - current_devices
-        if removed:
-            for vid, pid, serial in removed:
-                print(f"🔌 Device removed: VID={vid}, PID={pid}, Serial={serial}")
-            seen_devices = current_devices
-        
         time.sleep(1)
 
 # ---------------- Start Dashboard ----------------
 def start_dashboard():
-    threading.Thread(target=server_linux.start_server, daemon=True).start()
+    threading.Thread(target=server.start_server, daemon=True).start()
     time.sleep(1)
     print(f"\n🌐 Dashboard started at: http://localhost:8000")
-    print(f"   Access manually in your browser if it doesn't open automatically\n")
+    webbrowser.open("http://localhost:8000/")
 
 # ---------------- Main ----------------
 if __name__ == "__main__":
     print(f"\n{'='*60}")
-    print("🛡  USB Rubber Ducky Intrusion Detection System (Linux)")
+    print("🛡  USB Rubber Ducky Intrusion Detection System")
     print(f"{'='*60}\n")
-    
-    # Check for root privileges if blocking is needed
-    if os.geteuid() != 0:
-        print("⚠  Warning: Not running as root/sudo")
-        print("   USB blocking features will require sudo privileges")
-        print("   Consider running: sudo python3 usb_monitor_linux.py\n")
     
     start_dashboard()
     

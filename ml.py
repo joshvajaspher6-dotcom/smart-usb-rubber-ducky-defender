@@ -26,7 +26,76 @@ COMMAND_KEYWORDS = [
     "attrib",          
     "powershell.exe", 
     "netsh",           
-    "certutil",        
+    "certutil", 
+     # Shell and Terminal
+    "bash", "sh", "zsh", "fish", "dash", "ksh", "csh", "tcsh",
+    
+    # System Commands
+    "sudo", "su", "doas", "pkexec",
+    
+    # Package Managers
+    "apt", "apt-get", "yum", "dnf", "pacman", "zypper", "snap", "flatpak",
+    
+    # File Operations
+    "rm", "mv", "cp", "dd", "shred", "chmod", "chown", "chgrp",
+    
+    # Network Commands
+    "curl", "wget", "nc", "netcat", "ssh", "scp", "ftp", "telnet", "nmap",
+    
+    # System Information
+    "uname", "hostname", "whoami", "id", "ps", "top", "htop",
+    
+    # File Viewing/Editing
+    "cat", "nano", "vi", "vim", "less", "more", "tail", "head",
+    
+    # Process Management
+    "kill", "killall", "pkill", "systemctl", "service",
+    
+    # User Management
+    "useradd", "adduser", "userdel", "passwd", "usermod",
+    
+    # Directory Navigation
+    "cd", "ls", "pwd", "mkdir", "rmdir", "find", "locate",
+    
+    # Compression
+    "tar", "gzip", "gunzip", "zip", "unzip", "7z",
+    
+    # Script Execution
+    "python", "python3", "perl", "ruby", "php", "node",
+    
+    # Terminal Multiplexers
+    "screen", "tmux",
+    
+    # Shells/Command Operators
+    "&&", "||", "|", ";", ">", ">>", "<", "2>", "&",
+    
+    # Common Attack Patterns
+    "base64", "echo", "eval", "exec", "source", "export",
+    "crontab", "at", "systemd", "init",
+    
+    # Reverse Shells
+    "/bin/bash", "/bin/sh", "nc -e", "mkfifo", "pty",
+    
+    # Privilege Escalation
+    "pkexec", "gksudo", "kdesudo",
+    
+    # File Transfer
+    "rsync", "smbclient", "nfs",
+    
+    # System Modification
+    "mount", "umount", "fdisk", "mkfs", "fsck",
+    
+    # Firewall/Security
+    "iptables", "ufw", "firewalld", "selinux", "apparmor",
+    
+    # Download/Execute patterns
+    "curl -o", "wget -O", "bash -c", "sh -c", "python -c",
+    
+    # Registry/Config (cross-platform)
+    "gsettings", "dconf", "xdg-settings",
+    
+    # Recon Commands
+    "ifconfig", "ip addr", "netstat", "ss", "lsof", "w", "who", "last"
 ]
 
 

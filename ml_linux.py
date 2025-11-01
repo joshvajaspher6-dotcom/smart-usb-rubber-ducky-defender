@@ -145,15 +145,18 @@ class USBRubberDuckyDetector:
         keys = []
         word = ""
         for k in keys_raw:
+            if k is None:
+                # Skip None keys to avoid AttributeError
+                continue
             klow = k.lower().replace('key.', '').replace('win_l', 'super').replace('win_r', 'super')
             if klow == 'space':
-                if word: 
+                if word:
                     keys.append(word)
                 word = ""
             elif len(klow) == 1 and klow.isprintable():
                 word += klow
             else:
-                if word: 
+                if word:
                     keys.append(word)
                 word = ""
                 keys.append(klow)

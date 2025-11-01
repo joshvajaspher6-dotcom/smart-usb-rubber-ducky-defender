@@ -4,7 +4,6 @@ import sqlite3
 import threading
 import os
 import sys
-import subprocess
 
 try:
     import usb.core
@@ -17,7 +16,36 @@ import server_linux
 from ml_linux import USBRubberDuckyDetector, capture_5_seconds
 from allow_block_linux import block_device_linux, allow_device_linux, check_usb_authorization_support
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "usb_devices.db")
+DB_PATH = os.path.join(os.path.dirname(_file_), "usb_devices.db")
+
+# ---------------- SQLite Setup ----------------
+def initialize_database():
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS device_details (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usb_vid TEXT,
+  …
+#!/usr/bin/env python3
+import time
+import sqlite3
+import threading
+import os
+import sys
+
+try:
+    import usb.core
+    import usb.util
+except ImportError:
+    print("PyUSB not installed. Run 'pip install pyusb'")
+    sys.exit(1)
+
+import server_linux
+from ml_linux import USBRubberDuckyDetector, capture_5_seconds
+from allow_block_linux import block_device_linux, allow_device_linux, check_usb_authorization_support
+
+DB_PATH = os.path.join(os.path.dirname(_file_), "usb_devices.db")
 
 # ---------------- SQLite Setup ----------------
 def initialize_database():
@@ -50,17 +78,15 @@ else:
 
 # ---------------- USB Authorization Check ----------------
 usb_auth_supported = check_usb_authorization_support()
+if not usb_auth_supported:
+    print("⚠  Warning: USB authorization not supported. Physical blocking will not work.")
+    print("   Run with sudo for blocking capabilities.")
+else:
+    print(f"✅ USB authorization supported.")
 
 # ---------------- Helper Functions ----------------
 def normalize_serial(serial):
-    """Normalize serial number"""
-    if not serial:
-        return "NoSerial"
-    try:
-        serial = "".join(c for c in serial if c.isprintable()).strip()
-        return serial if serial else "NoSerial"
-    except Exception:
-        return "NoSerial"
+    return serial.split('&')[0] if serial else 'NoSerial'
 
 def print_device_info(vid, pid, serial):
     print(f"\n{'='*60}")
@@ -191,15 +217,11 @@ def analyze_device_with_ml(vid, pid, serial):
     
     print(f"{'='*60}\n")
 
-# ---------------- USB Monitoring Loop (Keep original Linux logic) ----------------
+# ---------------- USB Monitoring Loop ----------------
 def usb_monitor_loop():
-    print(f"\n{'='*60}")
-    print("🔄 USB Monitoring Active")
-    print(f"{'='*60}\n")
-    
     seen_devices = set()
     
-    # Get initially connected devices
+    # Silently get initially connected devices (mark as seen but don't analyze)
     devices = usb.core.find(find_all=True)
     for dev in devices:
         vid = f"{dev.idVendor:04X}"
@@ -209,9 +231,14 @@ def usb_monitor_loop():
         except Exception:
             serial = None
         serial = normalize_serial(serial)
-        seen_devices.add((vid, pid, serial))
+        
+        device_key = (vid, pid, serial)
+        seen_devices.add(device_key)
     
-    print(f"{len(seen_devices)} device(s) already connected. Waiting for new devices...\n")
+    # Now announce monitoring is active
+    print(f"\n{'='*60}")
+    print("🔄 USB Monitoring Active")
+    print(f"{'='*60}\n")
     
     while True:
         devices = usb.core.find(find_all=True)
@@ -229,18 +256,11 @@ def usb_monitor_loop():
             device_key = (vid, pid, serial)
             current_devices.add(device_key)
             
-            # New device detected
+            # New device detected - analyze ALL new devices (not just HID)
             if device_key not in seen_devices:
                 seen_devices.add(device_key)
                 print_device_info(vid, pid, serial)
                 check_or_insert_device(vid, pid, serial)
-        
-        # Optionally detect removed devices
-        removed = seen_devices - current_devices
-        if removed:
-            for vid, pid, serial in removed:
-                print(f"🔌 Device removed: VID={vid}, PID={pid}, Serial={serial}")
-            seen_devices = current_devices
         
         time.sleep(1)
 
@@ -252,7 +272,7 @@ def start_dashboard():
     print(f"   Access manually in your browser if it doesn't open automatically\n")
 
 # ---------------- Main ----------------
-if __name__ == "__main__":
+if _name_ == "_main_":
     print(f"\n{'='*60}")
     print("🛡  USB Rubber Ducky Intrusion Detection System (Linux)")
     print(f"{'='*60}\n")

@@ -15,7 +15,7 @@ devcon_path = find_devcon()
 
 @app.route("/")
 def index():
-    return send_from_directory(os.path.dirname(os.path.abspath(_file_)), "index.html")
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "index.html")
 
 @app.route("/devices", methods=["GET"])
 def get_devices():

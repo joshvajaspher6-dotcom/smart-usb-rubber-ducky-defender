@@ -6,9 +6,9 @@ import os
 import logging
 from allow_block import block_device, allow_device, find_devcon
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(_file_)), "usb_devices.db")
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "usb_devices.db")
 
-app = Flask(_name_)
+app = Flask(__name__)
 CORS(app)
 
 devcon_path = find_devcon()
@@ -111,6 +111,6 @@ def start_server():
     app.run(port=8000, debug=False)
 
 # ✅ Ensure it can run directly
-if _name_ == "_main_":
+if __name__ == "__main__":
     print("📂 Using database:", DB_PATH)
     start_server()

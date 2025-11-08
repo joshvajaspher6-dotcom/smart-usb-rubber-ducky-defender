@@ -5,80 +5,35 @@ import time
 import os
 import pickle
 import re
-import threading
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
+from sklearn.calibration import CalibratedClassifierCV
 from pynput import keyboard
 
 COMMAND_KEYWORDS = [
-    # Shell and Terminal
     "bash", "sh", "zsh", "fish", "dash", "ksh", "csh", "tcsh",
-    
-    # System Commands
     "sudo", "su", "doas", "pkexec",
-    
-    # Package Managers
     "apt", "apt-get", "yum", "dnf", "pacman", "zypper", "snap", "flatpak",
-    
-    # File Operations
     "rm", "mv", "cp", "dd", "shred", "chmod", "chown", "chgrp",
-    
-    # Network Commands
     "curl", "wget", "nc", "netcat", "ssh", "scp", "ftp", "telnet", "nmap",
-    
-    # System Information
     "uname", "hostname", "whoami", "id", "ps", "top", "htop",
-    
-    # File Viewing/Editing
     "cat", "nano", "vi", "vim", "less", "more", "tail", "head",
-    
-    # Process Management
     "kill", "killall", "pkill", "systemctl", "service",
-    
-    # User Management
     "useradd", "adduser", "userdel", "passwd", "usermod",
-    
-    # Directory Navigation
     "cd", "ls", "pwd", "mkdir", "rmdir", "find", "locate",
-    
-    # Compression
     "tar", "gzip", "gunzip", "zip", "unzip", "7z",
-    
-    # Script Execution
     "python", "python3", "perl", "ruby", "php", "node",
-    
-    # Terminal Multiplexers
     "screen", "tmux",
-    
-    # Shells/Command Operators
     "&&", "||", "|", ";", ">", ">>", "<", "2>", "&",
-    
-    # Common Attack Patterns
     "base64", "echo", "eval", "exec", "source", "export",
     "crontab", "at", "systemd", "init",
-    
-    # Reverse Shells
     "/bin/bash", "/bin/sh", "nc -e", "mkfifo", "pty",
-    
-    # Privilege Escalation
     "pkexec", "gksudo", "kdesudo",
-    
-    # File Transfer
     "rsync", "smbclient", "nfs",
-    
-    # System Modification
     "mount", "umount", "fdisk", "mkfs", "fsck",
-    
-    # Firewall/Security
     "iptables", "ufw", "firewalld", "selinux", "apparmor",
-    
-    # Download/Execute patterns
     "curl -o", "wget -O", "bash -c", "sh -c", "python -c",
-    
-    # Registry/Config (cross-platform)
     "gsettings", "dconf", "xdg-settings",
-    
-    # Recon Commands
     "ifconfig", "ip addr", "netstat", "ss", "lsof", "w", "who", "last"
 ]
 
@@ -118,19 +73,31 @@ class USBRubberDuckyDetector:
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.3, random_state=42, stratify=y
         )
-        model = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42, class_weight='balanced')
-        model.fit(X_train, y_train)
-        acc = model.score(X_test, y_test)
+        rf = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42, class_weight='balanced')
+        rf.fit(X_train, y_train)
+        calibrated_rf = CalibratedClassifierCV(rf, cv='prefit', method='sigmoid')
+        calibrated_rf.fit(X_test, y_test)
+        acc = calibrated_rf.score(X_test, y_test)
         print(f"Training complete. Test accuracy: {acc*100:.2f}%")
         with open(self.model_file, 'wb') as f:
-            pickle.dump(model, f)
-        self.model = model
+            pickle.dump(calibrated_rf, f)
+        self.model = calibrated_rf
 
     def load_model(self):
         if os.path.exists(self.model_file):
             with open(self.model_file, 'rb') as f:
                 self.model = pickle.load(f)
             return True
+        return False
+
+    def detect_ctrl_alt_t_sequence(self, keys):
+        sequence = ['ctrl', 'alt', 't']
+        seq_index = 0
+        for k in keys:
+            if k == sequence[seq_index]:
+                seq_index += 1
+                if seq_index == len(sequence):
+                    return True
         return False
 
     def extract_features(self, keystrokes):
@@ -146,7 +113,6 @@ class USBRubberDuckyDetector:
         word = ""
         for k in keys_raw:
             if k is None:
-                # Skip None keys to avoid AttributeError
                 continue
             klow = k.lower().replace('key.', '').replace('win_l', 'super').replace('win_r', 'super')
             if klow == 'space':
@@ -168,26 +134,25 @@ class USBRubberDuckyDetector:
         command_keys = ['enter', 'return']
         command_rate = sum(k in command_keys for k in keys) / max(1, total_keys)
         typed_text = " ".join(keys)
+
+        # Detect Ctrl + Alt + T sequence (simultaneous or sequential)
         terminal_triggered = False
-        # Linux terminal commands
+        if self.detect_ctrl_alt_t_sequence(keys):
+            terminal_triggered = True
+
+        # Count commands typed by counting enter/return keys
+        command_count = sum(k in command_keys for k in keys)
         terminal_commands = ["terminal", "bash", "sh", "zsh", "gnome-terminal", "konsole", "xterm", "sudo"]
-        for idx in range(len(keys)-1):
-            k1 = keys[idx]
-            k2 = keys[idx+1]
-            # Linux: Ctrl+Alt+T for terminal (common shortcut)
-            if (k1 == "ctrl" and k2 == "alt") or (k1 == "alt" and k2 == "t"):
-                terminal_triggered = True
-            # Check for terminal commands followed by enter
-            if k1 in terminal_commands and k2 in command_keys:
-                terminal_triggered = True
-            # Common Linux attack patterns
-            if k1 == "sudo" and k2 in ["apt", "rm", "chmod", "bash"]:
-                terminal_triggered = True
-            if k1 == "bash" and k2 in ["-c", "-i"]:
-                terminal_triggered = True
+        typed_terminal_commands = sum(k in terminal_commands for k in keys)
+
+        # Trigger terminal detection only if at least 3 commands typed AND terminal commands present
+        if command_count >= 3 and typed_terminal_commands > 0:
+            terminal_triggered = True
+
         keyword_count = sum([len(re.findall(r"\b{}\b".format(re.escape(kw)), typed_text)) for kw in COMMAND_KEYWORDS])
         keyword_rate = keyword_count / max(1, len(typed_text.replace(" ", "")))
         variance = np.var(diffs) if diffs.size > 0 else 0
+        
         return {
             'total_keys_5sec': total_keys,
             'avg_speed': avg_speed,
@@ -196,16 +161,17 @@ class USBRubberDuckyDetector:
             'keyword_rate': keyword_rate,
             'variance': variance,
             'terminal_triggered': terminal_triggered,
-            'typed_text': typed_text
+            'typed_text': typed_text,
+            'command_count': command_count
         }
 
     def predict(self, features):
         trigger_reason = []
+        if features.get('terminal_triggered', False):
+            trigger_reason.append(f"Terminal detected with {features.get('command_count', 0)} command(s)")
+            return 'USB_DUCKY', 100.0, trigger_reason
         if features['avg_speed'] >= self.rubberducky_speed_threshold:
             trigger_reason.append(f"Extreme typing speed ({features['avg_speed']:.2f} keys/sec)")
-            return 'USB_DUCKY', 100.0, trigger_reason
-        if features.get('terminal_triggered', False):
-            trigger_reason.append("Terminal open sequence detected")
             return 'USB_DUCKY', 100.0, trigger_reason
         if self.model is None:
             return None, None, []
@@ -232,9 +198,7 @@ class USBRubberDuckyDetector:
                 trigger_reason.append("ML model classification")
         return ('USB_DUCKY' if pred else 'HUMAN'), conf, trigger_reason
 
-
 def capture_5_seconds():
-    """Capture keyboard input for 5 seconds on Linux"""
     keystrokes = []
 
     def on_press(key):
@@ -242,12 +206,11 @@ def capture_5_seconds():
 
     listener = keyboard.Listener(on_press=on_press)
     listener.start()
-    time.sleep(5)   
+    time.sleep(5)
     listener.stop()
     listener.join()
 
     return keystrokes
-
 
 if __name__ == '__main__':
     detector = USBRubberDuckyDetector()

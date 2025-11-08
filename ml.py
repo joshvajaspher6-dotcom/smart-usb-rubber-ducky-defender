@@ -8,94 +8,78 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from pynput import keyboard
 
-COMMAND_KEYWORDS = [
-    "cmd",            
-    "powershell",      
-    "net",            
-    "tasklist",        
-    "taskkill",        
-    "reg",             
-    "wmic",            
-    "schtasks",       
-    "sc",              
-    "at",              
-    "rundll32",        
-    "del",             
-    "copy",           
-    "echo",            
-    "attrib",          
-    "powershell.exe", 
-    "netsh",           
-    "certutil", 
-     # Shell and Terminal
-    "bash", "sh", "zsh", "fish", "dash", "ksh", "csh", "tcsh",
-    
-    # System Commands
-    "sudo", "su", "doas", "pkexec",
-    
-    # Package Managers
-    "apt", "apt-get", "yum", "dnf", "pacman", "zypper", "snap", "flatpak",
-    
-    # File Operations
-    "rm", "mv", "cp", "dd", "shred", "chmod", "chown", "chgrp",
-    
-    # Network Commands
-    "curl", "wget", "nc", "netcat", "ssh", "scp", "ftp", "telnet", "nmap",
-    
-    # System Information
-    "uname", "hostname", "whoami", "id", "ps", "top", "htop",
-    
-    # File Viewing/Editing
-    "cat", "nano", "vi", "vim", "less", "more", "tail", "head",
-    
-    # Process Management
-    "kill", "killall", "pkill", "systemctl", "service",
-    
-    # User Management
-    "useradd", "adduser", "userdel", "passwd", "usermod",
-    
-    # Directory Navigation
-    "cd", "ls", "pwd", "mkdir", "rmdir", "find", "locate",
-    
-    # Compression
-    "tar", "gzip", "gunzip", "zip", "unzip", "7z",
-    
-    # Script Execution
-    "python", "python3", "perl", "ruby", "php", "node",
-    
-    # Terminal Multiplexers
-    "screen", "tmux",
-    
-    # Shells/Command Operators
-    "&&", "||", "|", ";", ">", ">>", "<", "2>", "&",
-    
-    # Common Attack Patterns
-    "base64", "echo", "eval", "exec", "source", "export",
-    "crontab", "at", "systemd", "init",
-    
-    # Reverse Shells
-    "/bin/bash", "/bin/sh", "nc -e", "mkfifo", "pty",
-    
-    # Privilege Escalation
-    "pkexec", "gksudo", "kdesudo",
-    
-    # File Transfer
-    "rsync", "smbclient", "nfs",
-    
-    # System Modification
-    "mount", "umount", "fdisk", "mkfs", "fsck",
-    
-    # Firewall/Security
-    "iptables", "ufw", "firewalld", "selinux", "apparmor",
-    
-    # Download/Execute patterns
-    "curl -o", "wget -O", "bash -c", "sh -c", "python -c",
-    
-    # Registry/Config (cross-platform)
-    "gsettings", "dconf", "xdg-settings",
-    
-    # Recon Commands
-    "ifconfig", "ip addr", "netstat", "ss", "lsof", "w", "who", "last"
+malicious_windows_commands_extended = [
+    "net",
+    "tasklist",
+    "taskkill",
+    "reg",
+    "wmic",
+    "schtasks",
+    "sc",
+    "at",
+    "rundll32",
+    "del",
+    "copy",
+    "attrib",
+    "netsh",
+    "certutil",
+    "cmd",
+    "powershell",
+    "powershell.exe",
+    "ping",
+    "tracert",
+    "nslookup",
+    "net use",
+    "net session",
+    "net view",
+    "net user",
+    "whoami",
+    "ipconfig",
+    "shutdown",
+    "diskpart",
+    "reg query",
+    "reg add",
+    "reg delete",
+    "regedit",
+    "curl",
+    "wget",
+    "-nop",               # powershell arguments commonly used maliciously
+    "-noni",
+    "-enc",
+    "iex",                # Invoke-Expression
+    ".downloadstring",
+    "downloadfile",
+    "Base64-encoded commands",
+    "Reflection.Assembly",
+    "WebClient",
+    "Invoke-WebRequest",
+    # Additional advanced or context-specific malicious commands:
+    "reagentc",            # configure Windows Recovery Environment (can be abused)
+    "recover",             # data recovery tool abused for hiding activity
+    "MpCmdRun -Scan -ScanType 2", # Windows Defender command-line malware scan (attackers may spoof or toggle)
+    "whoami /groups",      # check group privileges
+    "qprocess",            # query processes (used in reconnaissance)
+    "query",               # general query utilities
+    "net start",           # start services potentially maliciously
+    "net group",           # enumerate groups
+    "net config",          # network configuration info
+    "net share",           # list shared resources
+    "dsquery",             # Active Directory queries
+    "csvde",               # export AD info
+    "wusa",                # update installation (abused for patches/tampering)
+    "powershell -Command Start-Process cmd -ArgumentList '/c ...'", # command chaining and evasion
+    "PsExec",              # remote command execution tool often abused
+    "WMIExec",             # remote execution via WMI
+    "SMBExec",             # remote SMB execution
+    "mshta",               # HTA execution often abused for payloads
+    "ssh",                 # Remote secure shell usage on Windows for lateral movement
+    "scp",                 # Secure copy for payload transfer
+    "Invoke-Command",      # PowerShell remote command execution
+    "Get-ADUser",          # PowerShell AD reconnaissance
+    "Get-ADGroup",         # PowerShell AD group enumeration
+    "Get-Credential",      # Credential harvesting in PowerShell
+    "Invoke-Expression",   # code execution
+    "Set-ExecutionPolicy"  # to bypass PowerShell script execution restrictions
 ]
 
 

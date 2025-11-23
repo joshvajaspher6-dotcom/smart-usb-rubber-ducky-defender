@@ -8,7 +8,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from pynput import keyboard
 
-COMMAND KEYWORDS = [
+COMMAND_KEYWORDS = [
     "net",
     "tasklist",
     "taskkill",
